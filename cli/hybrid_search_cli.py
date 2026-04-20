@@ -8,24 +8,27 @@ def main() -> None:
     subparser = parser.add_subparsers(dest="command", help="Available commands")
     normalize_parser = subparser.add_parser("normalize", help="Normalize scores for combining")
     normalize_parser.add_argument("list", nargs="+", type=float)
-    weight_search_parser = subparser.add_parser(
+    weighted_parser = subparser.add_parser(
         "weighted-search", help="weighted hybrid keyword/semantic search"
     )
-    weight_search_parser.add_argument("query", type=str, help="Query for weighted search")
-    weight_search_parser.add_argument(
+    weighted_parser.add_argument("query", type=str, help="Query for weighted search")
+    weighted_parser.add_argument(
         "--alpha", default=DEF_ALPHA_WEIGHT, type=float, 
         help="Weight value for priority keyword or semantic"
     )
-    weight_search_parser.add_argument(
+    weighted_parser.add_argument(
         "--limit", default=DEFAULT_QUERY_LIMIT, type=int, help="Max number of results to return"
     )
-    rrf_search_parser = subparser.add_parser("rrf-search", help="Run rrf search on query")
-    rrf_search_parser.add_argument("query", type=str, help="Query to be searched")
-    rrf_search_parser.add_argument(
+    rrf_parser = subparser.add_parser("rrf-search", help="Run rrf search on query")
+    rrf_parser.add_argument("query", type=str, help="Query to be searched")
+    rrf_parser.add_argument(
         "-k", default=DEFAULT_K_WEIGHT, type=int, help="Weight value for the rrf search"
     )
-    rrf_search_parser.add_argument(
+    rrf_parser.add_argument(
         "--limit", default=DEFAULT_QUERY_LIMIT, type=int, help="Max number of results"
+    )
+    rrf_parser.add_argument(
+        "--enhance", type=str, choices=["spell", "rewrite"], help="Query enhancement method",
     )
     args = parser.parse_args()
 
@@ -37,7 +40,7 @@ def main() -> None:
         case "weighted-search":
             weighted_search_command(args.query, args.alpha, args.limit)
         case "rrf-search":
-            rrf_search_command(args.query, args.k, args.limit)
+            rrf_search_command(args.query, args.k, args.limit, args.enhance)
         case _:
             parser.print_help()
 

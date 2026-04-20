@@ -5,6 +5,9 @@ from lib.semantic_search import ChunkedSemanticSearch
 from lib.utils import load_movies
 from operator import itemgetter
 
+from dotenv import load_dotenv
+from google import genai
+
 class HybridSearch:
     def __init__(self, documents):
         self.documents = documents
@@ -106,10 +109,65 @@ def weighted_search_command(query, alpha, limit):
         print(f"  BM25: {res['bm25']:.3f}, Semantic: {res['semantic']:.3f}")
         print(f"  {res['description'][:100]}...")
 
-def rrf_search_command(query, k, limit):
-    hyb = HybridSearch(load_movies())
+def rrf_search_command(query, k, limit, enhancement):
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable not set")
+    client = genai.Client(api_key=api_key)
 
-    results = hyb.rrf_search(query, k, limit)
+    enhanced_query = ""
+    hyb = HybridSearch(load_movies())
+    match enhancement:
+        case "spell":
+            response = client.models.generate_content(
+                model="gemma-3-27b-it", 
+                contents=f"""
+                    Fix any spelling errors in the user-provided movie search query below.
+                    Correct only clear, high-confidence typos. 
+                    Do not rewrite, add, remove, or reorder words.
+                    Preserve punctuation and capitalization unless a change is required for a typo fix.
+                    If there are no spelling errors, 
+                    or if you're unsure, output the original query unchanged.
+                    Output only the final query text, nothing else.
+                    User query: "{query}"
+                    """
+            )
+            enhanced_query = response.text
+        case "rewrite":
+            response = client.models.generate_content(
+                model="gemma-3-27b-it", 
+                contents=f"""
+                Rewrite the user-provided movie search query below to be more specific and searchable.
+                Consider:
+                - Common movie knowledge (famous actors, popular films)
+                - Genre conventions (horror = scary, animation = cartoon)
+                - Keep the rewritten query concise (under 10 words)
+                - It should be a Google-style search query, specific enough to yield relevant results
+                - Don't use boolean logic
+
+                Examples:
+                - "that bear movie where leo gets attacked" -> 
+                "The Revenant Leonardo DiCaprio bear attack"
+                - "movie about bear in london with marmalade" -> "Paddington London marmalade"
+                - "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
+
+                If you cannot improve the query, output the original unchanged.
+                Output only the rewritten query text, nothing else.
+
+                User query: "{query}"
+                """
+            )
+            enhanced_query = response.text
+
+    final_query = ""
+    if enhancement:
+        print(f"\nEnhanced query ({enhancement}): '{query}' -> {enhanced_query}")
+        final_query = enhanced_query
+    else:
+        final_query = query
+
+    results = hyb.rrf_search(final_query, k, limit)
     for i, res in enumerate(results.values()):
         print(f"{i+1}. {res['title']}")
         print(f"  RRF Score: {res['rrf_score']:.3f}")
