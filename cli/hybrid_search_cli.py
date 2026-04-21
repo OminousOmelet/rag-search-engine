@@ -1,7 +1,7 @@
 import argparse
 
 from lib.hybrid_search import *
-from lib.utils import DEF_ALPHA_WEIGHT, DEFAULT_QUERY_LIMIT, DEFAULT_K_WEIGHT
+from lib.utils import DEFAULT_ALPHA, DEFAULT_QUERY_LIMIT, RRF_K
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -13,7 +13,7 @@ def main() -> None:
     )
     weighted_parser.add_argument("query", type=str, help="Query for weighted search")
     weighted_parser.add_argument(
-        "--alpha", default=DEF_ALPHA_WEIGHT, type=float, 
+        "--DEFAULT_ALPHA", default=DEFAULT_ALPHA, type=float, 
         help="Weight value for priority keyword or semantic"
     )
     weighted_parser.add_argument(
@@ -22,13 +22,14 @@ def main() -> None:
     rrf_parser = subparser.add_parser("rrf-search", help="Run rrf search on query")
     rrf_parser.add_argument("query", type=str, help="Query to be searched")
     rrf_parser.add_argument(
-        "-k", default=DEFAULT_K_WEIGHT, type=int, help="Weight value for the rrf search"
+        "-k", default=RRF_K, type=int, help="Weight value for the rrf search"
     )
     rrf_parser.add_argument(
         "--limit", default=DEFAULT_QUERY_LIMIT, type=int, help="Max number of results"
     )
     rrf_parser.add_argument(
-        "--enhance", type=str, choices=["spell", "rewrite"], help="Query enhancement method",
+        "--enhance", type=str, choices=["spell", "rewrite", "expand"], 
+        help="Query enhancement method",
     )
     args = parser.parse_args()
 

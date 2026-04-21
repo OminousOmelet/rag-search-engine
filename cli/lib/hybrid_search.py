@@ -1,12 +1,10 @@
 import os
 
-from lib.keyword_search import InvertedIndex
-from lib.semantic_search import ChunkedSemanticSearch
-from lib.utils import load_movies
+from .keyword_search import InvertedIndex
+from .semantic_search import ChunkedSemanticSearch
+from .utils import DEFAULT_QUERY_LIMIT, DEFAULT_ALPHA, RRF_K, load_movies
+from .enhance_query import enhance_query
 from operator import itemgetter
-
-from dotenv import load_dotenv
-from google import genai
 
 class HybridSearch:
     def __init__(self, documents):
@@ -19,11 +17,11 @@ class HybridSearch:
             self.idx.build()
             self.idx.save()
 
-    def _bm25_search(self, query, limit):
+    def _bm25_search(self, query, limit=DEFAULT_QUERY_LIMIT):
         self.idx.load()
         return self.idx.bm25_search(query, limit)
 
-    def weighted_search(self, query, alpha, limit):
+    def weighted_search(self, query, alpha=DEFAULT_ALPHA, limit=DEFAULT_QUERY_LIMIT):
         bm25_results = self._bm25_search(query, limit*500)
         sem_results = self.semantic_search.search_chunks(query, limit*500)
         bm25_scores_only = list(map(lambda x: x['score'], bm25_results))
@@ -60,7 +58,7 @@ class HybridSearch:
         )
         return dict(list(sorted_results.items())[:limit])
 
-    def rrf_search(self, query, k, limit=10):
+    def rrf_search(self, query, k=RRF_K, limit=10): # magic number from instructor code, idk?
         bm25_results = self._bm25_search(query, limit*500)
         sem_results = self.semantic_search.search_chunks(query, limit*500)
         sorted_bm25 = sorted(bm25_results, key=itemgetter('score'), reverse=True)
@@ -80,7 +78,7 @@ class HybridSearch:
             sorted(ranked.items(), key=lambda x: x[1]['rrf_score'], reverse=True)
         )
         return dict(list(ranked_sorted.items())[:limit])
-                
+
 
 def normalize_list(un_normed_list):
     if len(un_normed_list) == 0:
@@ -96,80 +94,35 @@ def normalize_list(un_normed_list):
             norm_list.append((arg - min_val) / (max_val - min_val))
     return norm_list
 
-def hybrid_score(bm25_score, semantic_score, alpha=0.5):
-    return alpha * bm25_score + (1 - alpha) * semantic_score
 
-def weighted_search_command(query, alpha, limit):
+def hybrid_score(bm25_score, semantic_score, DEFAULT_ALPHA=0.5):
+    return DEFAULT_ALPHA * bm25_score + (1 - DEFAULT_ALPHA) * semantic_score
+
+
+def weighted_search_command(query, DEFAULT_ALPHA, limit):
     hyb = HybridSearch(load_movies())
 
-    results = hyb.weighted_search(query, alpha, limit)
-    for i, res in enumerate(results.values()):
-        print(f"{i+1}. {res['title']}")
+    results = hyb.weighted_search(query, DEFAULT_ALPHA, limit)
+    for i, res in enumerate(results.values(), 1):
+        print(f"{i}. {res['title']}")
         print(f"  Hybrid Score: {res['hybrid']:.3f}")
         print(f"  BM25: {res['bm25']:.3f}, Semantic: {res['semantic']:.3f}")
         print(f"  {res['description'][:100]}...")
 
+
 def rrf_search_command(query, k, limit, enhancement):
-    load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY environment variable not set")
-    client = genai.Client(api_key=api_key)
-
-    enhanced_query = ""
-    hyb = HybridSearch(load_movies())
-    match enhancement:
-        case "spell":
-            response = client.models.generate_content(
-                model="gemma-3-27b-it", 
-                contents=f"""
-                    Fix any spelling errors in the user-provided movie search query below.
-                    Correct only clear, high-confidence typos. 
-                    Do not rewrite, add, remove, or reorder words.
-                    Preserve punctuation and capitalization unless a change is required for a typo fix.
-                    If there are no spelling errors, 
-                    or if you're unsure, output the original query unchanged.
-                    Output only the final query text, nothing else.
-                    User query: "{query}"
-                    """
-            )
-            enhanced_query = response.text
-        case "rewrite":
-            response = client.models.generate_content(
-                model="gemma-3-27b-it", 
-                contents=f"""
-                Rewrite the user-provided movie search query below to be more specific and searchable.
-                Consider:
-                - Common movie knowledge (famous actors, popular films)
-                - Genre conventions (horror = scary, animation = cartoon)
-                - Keep the rewritten query concise (under 10 words)
-                - It should be a Google-style search query, specific enough to yield relevant results
-                - Don't use boolean logic
-
-                Examples:
-                - "that bear movie where leo gets attacked" -> 
-                "The Revenant Leonardo DiCaprio bear attack"
-                - "movie about bear in london with marmalade" -> "Paddington London marmalade"
-                - "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
-
-                If you cannot improve the query, output the original unchanged.
-                Output only the rewritten query text, nothing else.
-
-                User query: "{query}"
-                """
-            )
-            enhanced_query = response.text
-
     final_query = ""
     if enhancement:
+        enhanced_query = enhance_query(query, enhancement)
         print(f"\nEnhanced query ({enhancement}): '{query}' -> {enhanced_query}")
         final_query = enhanced_query
     else:
         final_query = query
 
+    hyb = HybridSearch(load_movies())
     results = hyb.rrf_search(final_query, k, limit)
-    for i, res in enumerate(results.values()):
-        print(f"{i+1}. {res['title']}")
+    for i, res in enumerate(results.values(), 1):
+        print(f"{i}. {res['title']}")
         print(f"  RRF Score: {res['rrf_score']:.3f}")
         print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
         print(f"  {res['document'][:100]}...")

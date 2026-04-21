@@ -25,8 +25,8 @@ CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
 
 BM25_K1 = 1.5
 BM25_B = 0.75
-DEF_ALPHA_WEIGHT = 0.5
-DEFAULT_K_WEIGHT = 60
+DEFAULT_ALPHA = 0.5
+RRF_K = 60
 
 def load_movies() -> list[dict]:
     with open(MOVIES_PATH, "r") as f:
@@ -37,7 +37,8 @@ def load_movies() -> list[dict]:
 def load_stopwords() -> list[str]:
     with open(STOPWORDS_PATH, "r") as f:
         return f.read().splitlines()
-    
+
+# Used for some results, instructor's code (long, annoying story)
 def format_search_result(
     doc_id: str, title: str, document: str, score: float, **metadata: Any
 ) -> dict[str, Any]:
