@@ -2,8 +2,8 @@ import os
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
-from .utils import DEFAULT_QUERY_LIMIT, DEFAULT_ALPHA, RRF_K, load_movies
-from .enhance_query import enhance_query
+from .utils import DEFAULT_QUERY_LIMIT, DEFAULT_ALPHA, RRF_K, RERANK_FACTOR, load_movies
+from .enhance_query import enhance_query, rerank_func
 from operator import itemgetter
 
 class HybridSearch:
@@ -110,7 +110,10 @@ def weighted_search_command(query, DEFAULT_ALPHA, limit):
         print(f"  {res['description'][:100]}...")
 
 
-def rrf_search_command(query, k, limit, enhancement):
+def rrf_search_command(query, k, limit, enhancement, rerank_method):
+    if rerank_method == "individual":
+        limit *= RERANK_FACTOR
+
     final_query = ""
     if enhancement:
         enhanced_query = enhance_query(query, enhancement)
@@ -121,8 +124,14 @@ def rrf_search_command(query, k, limit, enhancement):
 
     hyb = HybridSearch(load_movies())
     results = hyb.rrf_search(final_query, k, limit)
+    if rerank_method == "individual":
+        results = rerank_func(final_query, results, int(limit / RERANK_FACTOR), rerank_method)
+    
+    print(f"Reciprocal Rank Fusion Results for '{query}' (k={k}):\n")
     for i, res in enumerate(results.values(), 1):
         print(f"{i}. {res['title']}")
+        if res['rerank']:
+            print(f"  Re-rank Score: {res['rerank']:.3f}/10")
         print(f"  RRF Score: {res['rrf_score']:.3f}")
         print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
         print(f"  {res['document'][:100]}...")

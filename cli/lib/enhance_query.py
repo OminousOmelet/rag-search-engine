@@ -1,4 +1,4 @@
-import os
+import os, time, random
 
 from dotenv import load_dotenv
 from google import genai
@@ -11,8 +11,6 @@ client = genai.Client(api_key=api_key)
 model = "gemma-3-27b-it"
 
 def enhance_query(query, enhancement):
-    
-
     match enhancement:
         case "spell":
             response = client.models.generate_content(
@@ -76,3 +74,33 @@ def enhance_query(query, enhancement):
             enhanced_query = f"{query} {expanded_terms}".strip()
 
     return enhanced_query
+
+
+
+def rerank_func(query, documents: list[dict], limit, rerank_method):
+    total_docs = len(documents)
+    print(f"Re-ranking top {limit} results using {rerank_method} method...")
+    for i, doc in enumerate(documents.values(), 1):
+        print(f"Re-ranking initial results: {i}/{total_docs}\r", end="", flush=True)
+        response = client.models.generate_content(
+            model=model, 
+            contents=f"""Rate how well this movie matches the search query.
+
+            Query: "{query}"
+            Movie: {doc.get("title", "")} - {doc.get("document", "")}
+
+            Consider:
+            - Direct relevance to query
+            - User intent (what they're looking for)
+            - Content appropriateness
+
+            Rate 0-10 (10 = perfect match).
+            Output ONLY the number in your response, no other text or explanation.
+
+            Score:
+            """
+        )
+        doc['rerank'] = float(response.text)
+        time.sleep(3)
+    
+    return dict(sorted(documents.items(), key=lambda x: x[1]['rerank'], reverse=True)[:limit])

@@ -27,6 +27,7 @@ BM25_K1 = 1.5
 BM25_B = 0.75
 DEFAULT_ALPHA = 0.5
 RRF_K = 60
+RERANK_FACTOR = 5
 
 def load_movies() -> list[dict]:
     with open(MOVIES_PATH, "r") as f:
