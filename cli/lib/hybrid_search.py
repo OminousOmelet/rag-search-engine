@@ -74,10 +74,7 @@ class HybridSearch:
                 ranked[doc['id']]['rrf_score'] = 0.0
             ranked[doc['id']]['sem_rank'] = rank
             ranked[doc['id']]['rrf_score'] += 1.0 / float(k + rank)
-        ranked_sorted = dict(
-            sorted(ranked.items(), key=lambda x: x[1]['rrf_score'], reverse=True)
-        )
-        return dict(list(ranked_sorted.items())[:limit])
+        return sorted(ranked.values(), key=lambda x: x['rrf_score'], reverse=True)[:limit]
 
 
 def normalize_list(un_normed_list):
@@ -111,7 +108,7 @@ def weighted_search_command(query, DEFAULT_ALPHA, limit):
 
 
 def rrf_search_command(query, k, limit, enhancement, rerank_method):
-    if rerank_method == "individual":
+    if rerank_method:
         limit *= RERANK_FACTOR
 
     final_query = ""
@@ -124,14 +121,14 @@ def rrf_search_command(query, k, limit, enhancement, rerank_method):
 
     hyb = HybridSearch(load_movies())
     results = hyb.rrf_search(final_query, k, limit)
-    if rerank_method == "individual":
+    if rerank_method:
         results = rerank_func(final_query, results, int(limit / RERANK_FACTOR), rerank_method)
     
     print(f"Reciprocal Rank Fusion Results for '{query}' (k={k}):\n")
-    for i, res in enumerate(results.values(), 1):
+    for i, res in enumerate(results, 1):
         print(f"{i}. {res['title']}")
-        if res['rerank']:
-            print(f"  Re-rank Score: {res['rerank']:.3f}/10")
+        if 'rerank' in res:
+            print(f"  Re-rank {res['rerank']}")
         print(f"  RRF Score: {res['rrf_score']:.3f}")
         print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
         print(f"  {res['document'][:100]}...")

@@ -32,7 +32,7 @@ def main() -> None:
         help="Query enhancement method",
     )
     rrf_parser.add_argument(
-        "--rerank-method", type=str, choices=["individual", ""],
+        "--rerank-method", type=str, choices=["individual", "batch", ""],
         help="method of reranking for fine-tuning search results"    
     )
     args = parser.parse_args()

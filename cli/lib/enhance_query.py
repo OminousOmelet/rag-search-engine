@@ -1,4 +1,4 @@
-import os, time, random
+import os, time, json
 
 from dotenv import load_dotenv
 from google import genai
@@ -78,10 +78,17 @@ def enhance_query(query, enhancement):
 
 
 def rerank_func(query, documents: list[dict], limit, rerank_method):
-    total_docs = len(documents)
     print(f"Re-ranking top {limit} results using {rerank_method} method...")
-    for i, doc in enumerate(documents.values(), 1):
-        print(f"Re-ranking initial results: {i}/{total_docs}\r", end="", flush=True)
+    match rerank_method:
+        case "individual":
+            return individual_rerank(query, documents, limit)
+        case "batch":
+            return batch_rerank(query, documents, limit)
+
+
+def individual_rerank(query, documents: list[dict], limit):
+    for i, doc in enumerate(documents, 1):
+        print(f"Re-ranking initial results: {i}/{len(documents)}\r", end="", flush=True)
         response = client.models.generate_content(
             model=model, 
             contents=f"""Rate how well this movie matches the search query.
@@ -100,7 +107,44 @@ def rerank_func(query, documents: list[dict], limit, rerank_method):
             Score:
             """
         )
-        doc['rerank'] = float(response.text)
+        doc['rerank_value'] = float(response.text)
         time.sleep(3)
     
-    return dict(sorted(documents.items(), key=lambda x: x[1]['rerank'], reverse=True)[:limit])
+    final_list = sorted(documents, key=lambda x: x['rerank_value'], reverse=True)[:limit]
+    for doc in final_list:
+        doc['rerank'] = f"Score: {doc['rerank_value']:.3f}/10"
+
+    return final_list
+
+def batch_rerank(query, documents: list[dict], limit):
+    doc_list_str = json.dumps(documents)
+
+    response = client.models.generate_content(
+        model=model,
+        contents=f"""
+        Rank the movies listed below by relevance to the following search query.
+
+        Query: "{query}"
+
+        Movies:
+        {doc_list_str}
+
+        Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
+
+        For example:
+        [75, 12, 34, 2, 1]
+
+        Ranking:
+        """
+    )
+    rank_list = json.loads(response.text)
+    id_to_doc = {doc['id']: doc for doc in documents} # for mapping ranks sequentially to docs by ID
+    doc_list = []
+    for id in rank_list[:limit]:
+        doc_list.append(id_to_doc.get(id))
+    
+    for i, doc in enumerate(doc_list, 1):
+        doc['rerank'] = f" Rank: {i}"
+    
+    return doc_list
+    
