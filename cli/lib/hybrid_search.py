@@ -129,6 +129,8 @@ def rrf_search_command(query, k, limit, enhancement, rerank_method):
         print(f"{i}. {res['title']}")
         if 'rerank' in res:
             print(f"  Re-rank {res['rerank']}")
+        if 'cross_enc' in res:
+            print(f"  Cross Encoder Score: {res['cross_enc']:.3f}")
         print(f"  RRF Score: {res['rrf_score']:.3f}")
         print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
         print(f"  {res['document'][:100]}...")
