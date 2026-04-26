@@ -107,7 +107,7 @@ def weighted_search_command(query, DEFAULT_ALPHA, limit):
         print(f"  {res['description'][:100]}...")
 
 
-def rrf_search_command(query, k, limit, enhancement, rerank_method):
+def rrf_search_command(query, k, limit, enhancement=None, rerank_method=None):
     if rerank_method:
         limit *= RERANK_FACTOR
 
@@ -124,13 +124,4 @@ def rrf_search_command(query, k, limit, enhancement, rerank_method):
     if rerank_method:
         results = rerank_func(final_query, results, int(limit / RERANK_FACTOR), rerank_method)
     
-    print(f"Reciprocal Rank Fusion Results for '{query}' (k={k}):\n")
-    for i, res in enumerate(results, 1):
-        print(f"{i}. {res['title']}")
-        if 'rerank' in res:
-            print(f"  Re-rank {res['rerank']}")
-        if 'cross_enc' in res:
-            print(f"  Cross Encoder Score: {res['cross_enc']:.3f}")
-        print(f"  RRF Score: {res['rrf_score']:.3f}")
-        print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
-        print(f"  {res['document'][:100]}...")
+    return results
