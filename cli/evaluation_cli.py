@@ -28,6 +28,8 @@ def main():
         results.append({
             'query': set.get('query'),
             'precision': 0.0,
+            'recall': 0.0,
+            'f1': 0.0,
             'retrieved': [],
             'relevant': []
         })
@@ -39,17 +41,21 @@ def main():
             if doc['title'] in set.get('relevant_docs'):
                 relevant.append(doc.get('title'))
 
-        results[i]['precision'] = len(relevant) / len(retrieved)
+        precision = results[i]['precision'] = len(relevant) / len(retrieved)
+        recall = results[i]['recall'] = len(relevant) / len(set.get('relevant_docs'))
+        results[i]['f1'] = 2 * (precision * recall) / (precision + recall)
 
     sorted_results = sorted(results, key=lambda x: x['precision'], reverse=True)
     print(f"k={limit}\n\n")
     for res in sorted_results:
         print(f"- Query: {res.get('query')}")
         print(f"  - Precision@{limit}: {res.get('precision'):.4f}")
+        print(f"  - Recall@{limit}: {res.get('recall'):.4f}")
+        print(f"  - F1 Score: {res.get('f1'):.4f}")
         retrieved_str = ", ".join(res.get('retrieved'))
         print("  - Retrieved: " + retrieved_str)
         relevant_str = ", ".join(res.get('relevant'))
-        print("  - Relevant: " + relevant_str)
+        print("  - Relevant: " + relevant_str + "\n")
 
 if __name__ == "__main__":
     main()
