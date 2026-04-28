@@ -1,7 +1,7 @@
-import argparse
+import argparse, os
 
 from lib.hybrid_search import *
-from lib.utils import DEFAULT_ALPHA, DEFAULT_QUERY_LIMIT, RRF_K
+from lib.utils import DEBUG, debug_data, DEFAULT_ALPHA, DEFAULT_QUERY_LIMIT, RRF_K, print_doc_list, log_to_debug_file
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -35,31 +35,37 @@ def main() -> None:
         "--rerank-method", type=str, choices=["individual", "batch", "cross_encoder", ""],
         help="method of reranking for fine-tuning search results"    
     )
+    rrf_parser.add_argument("--evaluate", action="store_true", help="Use LLM to evaluate relevance of results")
     args = parser.parse_args()
 
+    debug_type = None
     match args.command:
         case "normalize":
             norm_list = normalize_list(args.list)
             for num in norm_list:
                 print(f"* {num:.4f}")
         case "weighted-search":
+            if DEBUG:
+                debug_type = "weighted_search"
+                debug_data.append({'original_query': args.query})
             weighted_search_command(args.query, args.alpha, args.limit)
         case "rrf-search":
+            if DEBUG:
+                debug_type = "rrf_search"
+                debug_data.append({'original_query': args.query})
             results = rrf_search_command(
-                args.query, args.k, args.limit, args.enhance, args.rerank_method
+                args.query, args.k, args.limit, args.enhance, args.rerank_method, args.evaluate
             )
-            print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={k}):\n")
-            for i, res in enumerate(results, 1):
-                print(f"{i}. {res['title']}")
-                if 'rerank' in res:
-                    print(f"  Re-rank {res['rerank']}")
-                if 'cross_enc' in res:
-                    print(f"  Cross Encoder Score: {res['cross_enc']:.3f}")
-                print(f"  RRF Score: {res['rrf_score']:.3f}")
-                print(f"  BM25 Rank: {res['bm25_rank']}, Semantic Rank: {res['sem_rank']}")
-                print(f"  {res['document'][:100]}...")
+            if not args.evaluate:
+                print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={RRF_K}):\n")
+                print_doc_list(results)
         case _:
             parser.print_help()
+
+    if DEBUG:
+        obj = {debug_type: debug_data}
+        log_to_debug_file(obj)
+
 
 if __name__ == "__main__":
     main()

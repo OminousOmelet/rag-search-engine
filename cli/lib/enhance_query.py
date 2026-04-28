@@ -3,6 +3,7 @@ import os, time, json
 from dotenv import load_dotenv
 from google import genai
 from sentence_transformers import CrossEncoder
+from .utils import DEBUG, debug_data
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -74,6 +75,8 @@ def enhance_query(query, enhancement):
             expanded_terms = response.text.strip().strip('"')
             enhanced_query = f"{query} {expanded_terms}".strip()
 
+    if DEBUG:
+        debug_data.append({'enhanced_query': enhanced_query})
     return enhanced_query
 
 
@@ -163,6 +166,38 @@ def cross_enc_rerank(query, documents: list[dict], limit):
     scores = cross_encoder.predict(pairs)
 
     for i, doc in enumerate(documents):
-        doc['cross_enc'] = scores[i]
+        doc['cross_enc'] = float(scores[i])
 
     return sorted(documents, key=lambda x: x['cross_enc'], reverse=True)[:limit]
+
+def evaluate_results(query, results: list[dict]):
+    results_str_list = []
+    for res in results:
+        results_str_list.append(json.dumps(res))
+    response = client.models.generate_content(
+        model=model,
+        contents=f"""
+        Rate how relevant each result is to this query on a 0-3 scale:
+
+        Query: "{query}"
+
+        Results:
+        {chr(10).join(results_str_list)}
+
+        Scale:
+        - 3: Highly relevant
+        - 2: Relevant
+        - 1: Marginally relevant
+        - 0: Not relevant
+
+        Do NOT give any numbers other than 0, 1, 2, or 3.
+
+        Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+        [2, 0, 3, 2, 0, 1]
+        """
+    )
+
+    scale_list = json.loads(response.text)
+    for i, val in enumerate(scale_list):
+        print(f"{i+1} {results[i]['title']}: {val}/3")

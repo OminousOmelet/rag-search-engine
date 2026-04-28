@@ -117,19 +117,6 @@ class InvertedIndex:
         bm25idf = self.get_bm25_idf(term)
         bm25tf = self.get_bm25_tf(doc_id, term)
         return bm25idf * bm25tf
-
-    # def bm25_search(self, query, limit=DEFAULT_SEARCH_LIMIT):
-    #     query_tokens = tokenize_text(query)
-    #     scores_by_id: dict[int, float] = {}
-    #     for doc in self.docmap.values():
-    #         scores_by_id[doc['id']] = 0
-    #         for token in query_tokens:
-    #             scores_by_id[doc['id']] += self.bm25(doc['id'], token)
-    #     id_list = sorted(scores_by_id.items(), key=lambda item: item[1], reverse=True)
-    #     doc_list = []
-    #     for item in id_list[:limit]:
-    #         doc_list.append((self.docmap[item[0]], item[1]))
-    #     return doc_list
     
     def bm25_search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
         query_tokens = tokenize_text(query)
@@ -143,13 +130,14 @@ class InvertedIndex:
         results = []
         for doc_id, score in sorted_docs[:limit]:
             doc = self.docmap[doc_id]
-            formatted_result = format_search_result(
-                doc_id=doc["id"],
-                title=doc["title"],
-                document=doc["description"],
-                score=score,
+            results.append(
+                format_search_result(
+                    doc_id=doc["id"],
+                    title=doc["title"],
+                    document=doc["description"],
+                    score=float(score),
+                )
             )
-            results.append(formatted_result)
         return results
 
 def build_command():

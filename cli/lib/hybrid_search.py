@@ -2,8 +2,10 @@ import os
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
-from .utils import DEFAULT_QUERY_LIMIT, DEFAULT_ALPHA, RRF_K, RERANK_FACTOR, load_movies
-from .enhance_query import enhance_query, rerank_func
+from .utils import (
+    DEBUG, debug_data, DEFAULT_QUERY_LIMIT, DEFAULT_ALPHA, RRF_K, RERANK_FACTOR, load_movies
+)
+from .enhance_query import enhance_query, rerank_func, evaluate_results
 from operator import itemgetter
 
 class HybridSearch:
@@ -23,7 +25,11 @@ class HybridSearch:
 
     def weighted_search(self, query, alpha=DEFAULT_ALPHA, limit=DEFAULT_QUERY_LIMIT):
         bm25_results = self._bm25_search(query, limit*500)
+        if DEBUG:
+            debug_data.append({'bm25_results': bm25_results})
         sem_results = self.semantic_search.search_chunks(query, limit*500)
+        if DEBUG:
+            debug_data.append({'semantic_results': sem_results})
         bm25_scores_only = list(map(lambda x: x['score'], bm25_results))
         sem_scores_only = list(map(lambda x: x['score'], sem_results))
         bm25_normed = normalize_list(bm25_scores_only)
@@ -58,16 +64,20 @@ class HybridSearch:
         )
         return dict(list(sorted_results.items())[:limit])
 
-    def rrf_search(self, query, k=RRF_K, limit=10): # magic number from instructor code, idk?
+    def rrf_search(self, query, k=RRF_K, limit=DEFAULT_QUERY_LIMIT):
         bm25_results = self._bm25_search(query, limit*500)
+        if DEBUG:
+            debug_data.append({'bm25_results': bm25_results})
         sem_results = self.semantic_search.search_chunks(query, limit*500)
+        if DEBUG:
+            debug_data.append({'semantic_results': sem_results})
         sorted_bm25 = sorted(bm25_results, key=itemgetter('score'), reverse=True)
         sorted_sem = sorted(sem_results, key=itemgetter('score'), reverse=True)
         ranked = {}
         for rank, doc in enumerate(sorted_bm25):
             ranked[doc['id']] = doc
             ranked[doc['id']]['bm25_rank'] = rank
-            ranked[doc['id']]['rrf_score'] = 1.0 / float(k + rank)
+            ranked[doc['id']]['rrf_score'] = float(1.0 / (k + rank))
         for rank, doc in enumerate(sorted_sem):
             if doc['id'] not in ranked:
                 ranked[doc['id']] = doc
@@ -100,6 +110,8 @@ def weighted_search_command(query, DEFAULT_ALPHA, limit):
     hyb = HybridSearch(load_movies())
 
     results = hyb.weighted_search(query, DEFAULT_ALPHA, limit)
+    if DEBUG:
+        debug_data.append({'WEIGHTED RESULTS': results})
     for i, res in enumerate(results.values(), 1):
         print(f"{i}. {res['title']}")
         print(f"  Hybrid Score: {res['hybrid']:.3f}")
@@ -107,7 +119,7 @@ def weighted_search_command(query, DEFAULT_ALPHA, limit):
         print(f"  {res['description'][:100]}...")
 
 
-def rrf_search_command(query, k, limit, enhancement=None, rerank_method=None):
+def rrf_search_command(query, k, limit=DEFAULT_QUERY_LIMIT, enhancement=None, rerank_method=None, evaluate=False):
     if rerank_method:
         limit *= RERANK_FACTOR
 
@@ -121,7 +133,15 @@ def rrf_search_command(query, k, limit, enhancement=None, rerank_method=None):
 
     hyb = HybridSearch(load_movies())
     results = hyb.rrf_search(final_query, k, limit)
+    if DEBUG:
+        debug_data.append({'rrf_results': results})
+
     if rerank_method:
         results = rerank_func(final_query, results, int(limit / RERANK_FACTOR), rerank_method)
+        if DEBUG:
+            debug_data.append({'rerank_results': results})
+
+    if evaluate:
+        evaluate_results(query, results)
     
     return results
