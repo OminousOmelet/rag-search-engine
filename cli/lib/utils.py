@@ -3,6 +3,8 @@ import json, os
 from dotenv import load_dotenv
 from typing import Any
 
+GENAI_MODEL = "gemma-3-27b-it"
+
 DEFAULT_SEARCH_LIMIT = 5
 DOCUMENT_PREVIEW_LENGTH = 100
 SCORE_PRECISION = 3
@@ -94,3 +96,10 @@ def print_doc_list(documents):
 
         print(f"  BM25 Rank: {bm25_rank}, Semantic Rank: {sem_rank}")
         print(f"  {doc['document'][:100]}...\n")
+
+def print_docs_with_llm_response(documents: list[dict], response: str):
+    print("Search Results:")
+    for doc in documents:
+        print(f"- {doc['title']}")
+    print("\nRAG Response:")
+    print(response)

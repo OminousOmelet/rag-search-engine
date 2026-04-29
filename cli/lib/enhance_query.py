@@ -3,14 +3,14 @@ import os, time, json
 from dotenv import load_dotenv
 from google import genai
 from sentence_transformers import CrossEncoder
-from .utils import DEBUG, debug_data
+from .utils import GENAI_MODEL, DEBUG, debug_data
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     raise RuntimeError("GEMINI_API_KEY environment variable not set")
 client = genai.Client(api_key=api_key)
-model = "gemma-3-27b-it"
+model = GENAI_MODEL
 
 def enhance_query(query, enhancement):
     match enhancement:
