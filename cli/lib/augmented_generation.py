@@ -50,7 +50,58 @@ def summarize_command(query, documents: list[dict]):
         Search results:
         {chr(10).join(docs_str_list)}
 
-        Provide a comprehensive 3 to 4 sentence answer that combines information from multiple sources:
-        """
+        Provide a comprehensive 3 to 4 sentence answer that combines information from multiple sources:"""
+    )
+    return response.text
+
+def citations_command(query, documents: list[dict]):
+    docs_str_list = []
+    for doc in documents:
+        docs_str_list.append(json.dumps(doc))
+    response = client.models.generate_content(
+        model=GENAI_MODEL,
+        contents=f"""
+        Answer the query below and give information based on the provided documents.
+
+        The answer should be tailored to users of Hoopla, a movie streaming service.
+        If not enough information is available to provide a good answer, say so, but give the best answer possible while citing the sources available.
+
+        Query: {query}
+
+        Documents:
+        {chr(10).join(docs_str_list)}
+
+        Instructions:
+        - Provide a comprehensive answer that addresses the query
+        - Cite sources in the format [1], [2], etc. when referencing information
+        - If sources disagree, mention the different viewpoints
+        - If the answer isn't in the provided documents, say "I don't have enough information"
+        - Be direct and informative
+
+        Answer:"""
+    )
+    return response.text
+
+def question_command(question, documents: list[dict]):
+    docs_str_list = []
+    for doc in documents:
+        docs_str_list.append(json.dumps(doc))
+    response = client.models.generate_content(
+        model=GENAI_MODEL,
+        contents=f"""
+        Answer the user's question based on the provided movies that are available on Hoopla, a streaming service.
+
+        Question: {question}
+
+        Documents:
+        {chr(10).join(docs_str_list)}
+
+        Instructions:
+        - Answer questions directly and concisely
+        - Be casual and conversational
+        - Don't use 'hype-y' or overly enthusiastic language
+        - Talk like a person typically would in a chat conversation
+
+        Answer:"""
     )
     return response.text

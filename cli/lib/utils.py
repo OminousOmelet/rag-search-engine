@@ -97,9 +97,9 @@ def print_doc_list(documents):
         print(f"  BM25 Rank: {bm25_rank}, Semantic Rank: {sem_rank}")
         print(f"  {doc['document'][:100]}...\n")
 
-def print_docs_with_llm_response(documents: list[dict], response: str):
+def print_docs_with_llm_response(documents: list[dict], response: str, resp_title):
     print("Search Results:")
     for doc in documents:
         print(f"- {doc['title']}")
-    print("\nRAG Response:")
+    print(f"\n{resp_title}:")
     print(response)
