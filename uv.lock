@@ -964,6 +964,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "nltk" },
     { name = "numpy" },
+    { name = "pillow" },
     { name = "python-dotenv" },
     { name = "sentence-transformers" },
 ]
@@ -973,6 +974,7 @@ requires-dist = [
     { name = "google-genai", specifier = ">=1.73.1" },
     { name = "nltk", specifier = "==3.9.1" },
     { name = "numpy", specifier = ">=2.4.4" },
+    { name = "pillow", specifier = ">=12.2.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "sentence-transformers", specifier = "==5.1.0" },
 ]
