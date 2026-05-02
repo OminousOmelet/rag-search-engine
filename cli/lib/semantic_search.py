@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 from lib.utils import (
     DEFAULT_SEARCH_LIMIT, MOVIE_EMBEDDINGS_PATH, DEFAULT_CHUNK_OVERLAP, CHUNK_EMBEDDINGS_PATH, 
     CHUNK_METADATA_PATH, DEFAULT_SEMANTIC_CHUNK_SIZE, DOCUMENT_PREVIEW_LENGTH, 
-    load_movies, format_search_result
+    load_movies, cosine_similarity, format_search_result
 )
 class SemanticSearch:
     def __init__(self, model_name="all-MiniLM-L6-v2"):
@@ -165,14 +165,6 @@ def embed_query_text(query):
     print(f"Query: {query}")
     print(f"First 3 dimensions: {embedding[:3]}")
     print(f"Shape: {embedding.shape}")
-
-def cosine_similarity(vec1, vec2):
-    dot_product = np.dot(vec1, vec2)
-    norm1 = np.linalg.norm(vec1)
-    norm2 = np.linalg.norm(vec2)
-    if norm1 == 0 or norm2 == 0:
-        return 0.0
-    return dot_product / (norm1 * norm2)
 
 def search_command(query, limit):
     sem = SemanticSearch()
